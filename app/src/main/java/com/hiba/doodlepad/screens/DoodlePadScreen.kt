@@ -83,6 +83,9 @@ fun DoodlePadScreen() {
                             onDragEnd = {
                                 strokes = strokes + listOf(currentStrokes)
                                 currentStrokes = emptyList()
+                            },
+                            onDragCancel = {
+                                currentStrokes=emptyList()
                             }
                         )
                     }
@@ -91,6 +94,7 @@ fun DoodlePadScreen() {
                 if (strokes.isNotEmpty()) {
                     strokes.forEach { stroke ->
                         val path = drawStrokes(stroke)
+
 
                         drawPath(
                             path = path, color = buttonColor,
@@ -114,7 +118,8 @@ fun DoodlePadScreen() {
                 contentAlignment = Alignment.Center
             ) {
                 IconButton(onClick = {
-
+strokes=emptyList()
+                    currentStrokes=emptyList()
                 }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
