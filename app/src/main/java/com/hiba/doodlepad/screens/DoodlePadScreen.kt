@@ -2,7 +2,8 @@ package com.hiba.doodlepad.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -29,6 +31,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.hiba.doodlepad.R
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.positionChanged
 
 @Composable
 fun DoodlePadScreen() {
@@ -39,16 +45,45 @@ fun DoodlePadScreen() {
 //    currentStrokes-state belonging to screen
 //    remember-keep value across recompositions
 //    var not val-mutable state
-    var currentStrokes by remember {
-        mutableStateOf<List<Offset>>(emptyList())
+    val currentStrokes = remember {
+        mutableStateListOf<Offset>()
     }
 
-    fun drawStrokes(points: List<Offset>): Path {
+    fun createPath(points: List<Offset>): Path {
         val path = Path()
+        if (points.isEmpty()) {
+            return path
+        }
 
-        path.moveTo(points.first().x, points.first().y)
-        points.drop(1).forEach { point ->
-            path.lineTo(point.x, point.y)
+        if (points.size == 2) {
+            path.moveTo(points[0].x, points[0].y)
+            path.lineTo(points[1].x, points[1].y)
+            return path
+        }
+
+//        points.drop(1).forEach { point ->
+        val extendedPoints = listOf(points.first()) + points + listOf(points.last())
+        path.moveTo(extendedPoints[1].x, extendedPoints[1].y)
+
+//            path.lineTo(point.x, point.y)
+//        for until - last value is excluded
+        for (i in 1 until extendedPoints.size - 2) {
+//            points.size-2 because we will access i+2 and so that it remains  valid too
+            val p0 = extendedPoints[i - 1]
+            val p1 = extendedPoints[i]
+            val p2 = extendedPoints[i + 1]
+            val p3 = extendedPoints[i + 2]
+//                start is wherever I currently am
+            val control1 = p1 + (p2 - p0) / 6f
+//                previous=control point
+            val control2 = p2 - (p3 - p1) / 6f
+
+//                end=middle point
+            val end = p2
+
+            path.cubicTo(control1.x, control1.y, control2.x, control2.y, end.x, end.y)
+
+
         }
         return path
 
@@ -70,45 +105,111 @@ fun DoodlePadScreen() {
                     .pointerInput(
                         Unit
                     ) {
-                        detectDragGestures(
-                            onDragStart = { offset ->
-                                currentStrokes = listOf(offset)
-                            },
-                            onDrag = { change, dragAmount ->
-                                //                        use + operator -creates a new list with all the old elements + new elements
-//                            change tell use about finger pointer events-hold info about it
+                        awaitEachGesture {
 
-                                currentStrokes = currentStrokes + change.position
-                            },
-                            onDragEnd = {
-                                strokes = strokes + listOf(currentStrokes)
-                                currentStrokes = emptyList()
-                            },
-                            onDragCancel = {
-                                currentStrokes=emptyList()
+                            val start = awaitFirstDown()
+                            currentStrokes.add(start.position)
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.first()
+
+                                if (change.positionChanged()) {
+                                    currentStrokes.add(change.position)
+                                }
+
+                                if (change.changedToUp()) {
+                                    break
+
+                                }
                             }
-                        )
+                            strokes = strokes + listOf(currentStrokes.toList())
+                            currentStrokes.clear()
+
+                        }
+
+
+//                        detectDragGestures(
+//                            onDragStart = { offset ->
+//                                currentStrokes.add(offset)
+//                            },
+//                            onDrag = { change, _ ->
+//                                //                        use + operator -creates a new list with all the old elements + new elements
+////                            change tell use about finger pointer events-hold info about it--dragAmount- how much the finger moved since the previous drag event
+//                                val newPoints =
+//                                    change.historical.map { it.position } + change.position
+//                                currentStrokes.addAll(newPoints)
+//
+//                            },
+//                            onDragEnd = {
+//                                strokes = strokes + listOf(currentStrokes.toList())
+//                                currentStrokes.clear()
+//                            },
+//                            onDragCancel = {
+//                                currentStrokes.clear()
+//                            }
+//                        )
+//
                     }
             ) {
 
+
                 if (strokes.isNotEmpty()) {
                     strokes.forEach { stroke ->
-                        val path = drawStrokes(stroke)
+                        when (stroke.size) {
+                            1 -> {
+                                drawCircle(
+                                    color = buttonColor,
+                                    radius = 2f,
+                                    center = stroke.first()
+                                )
+                            }
+
+                            else -> {
+                                val path = createPath(stroke)
+
+                                drawPath(
+                                    color = buttonColor, path = path, style = Stroke(
+                                        4f,
+                                        cap = StrokeCap.Round,
+                                        join = StrokeJoin.Round
+                                    )
+                                )
+                            }
 
 
-                        drawPath(
-                            path = path, color = buttonColor,
-                            style = Stroke(width = 4f)
-                        )
+                        }
+
                     }
+
+
                 }
                 if (currentStrokes.isNotEmpty()) {
-                    val path = drawStrokes(currentStrokes)
-                    drawPath(
-                        path = path, color = buttonColor,
-                        style = Stroke(width = 4f)
-                    )
+                    when (currentStrokes.size) {
+                        1 -> {
+                            drawCircle(
+                                color = buttonColor,
+                                radius = 4f,
+                                center = currentStrokes.first()
+                            )
+                        }
+
+                        else -> {
+                            val path = createPath(currentStrokes)
+
+                            drawPath(
+                                path = path,
+                                color = buttonColor,
+                                style = Stroke(
+                                    4f,
+                                    join = StrokeJoin.Round,
+                                    cap = StrokeCap.Round
+                                )
+                            )
+                        }
+                    }
+
                 }
+
 
             }
 
@@ -118,8 +219,8 @@ fun DoodlePadScreen() {
                 contentAlignment = Alignment.Center
             ) {
                 IconButton(onClick = {
-strokes=emptyList()
-                    currentStrokes=emptyList()
+                    strokes = emptyList()
+                    currentStrokes.clear()
                 }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
