@@ -3,6 +3,7 @@ package com.hiba.doodlepad.screens
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,30 +47,34 @@ fun DoodlePadScreen() {
         mutableStateListOf<Offset>()
     }
 
+    var tapPosition by remember {
+        mutableStateOf<Offset?>(null)
+    }
+
     fun createPath(points: List<Offset>): Path {
         val path = Path()
-     if(points.isEmpty() || points.size==1)
-     {return path}
+        if (points.isEmpty()) {
+            return path
+        }
 
-        if(points.size==2)
-        {
+        if (points.size == 2) {
             path.moveTo(points[0].x, points[0].y)
             path.lineTo(points[1].x, points[1].y)
             return path
         }
 
 //        points.drop(1).forEach { point ->
-val extendedPoints=listOf(points.first())+points+listOf(points.last())
+        val extendedPoints = listOf(points.first()) + points + listOf(points.last())
         path.moveTo(extendedPoints[1].x, extendedPoints[1].y)
 
 //            path.lineTo(point.x, point.y)
 //        for until - last value is excluded
-        for (i in 1 until extendedPoints.size-2) {
+        for (i in 1 until extendedPoints.size - 2) {
 //            points.size-2 because we will access i+2 and so that it remains  valid too
-            val p0=extendedPoints[i-1]
-            val p1=extendedPoints[i]
-            val p2=extendedPoints[i+1]
-            val p3=extendedPoints[i+2]
+            val p0 = extendedPoints[i - 1]
+            val p1 = extendedPoints[i]
+            val p2 = extendedPoints[i + 1]
+            val p3 = extendedPoints[i + 2]
 //                start is wherever I currently am
             val control1 = p1 + (p2 - p0) / 6f
 //                previous=control point
@@ -122,8 +127,10 @@ val extendedPoints=listOf(points.first())+points+listOf(points.last())
                                 currentStrokes.clear()
                             }
                         )
+
                     }
             ) {
+
 
                 if (strokes.isNotEmpty()) {
                     strokes.forEach { stroke ->
@@ -137,7 +144,7 @@ val extendedPoints=listOf(points.first())+points+listOf(points.last())
                                 )
                             }
 
-                            else->{
+                            else -> {
                                 drawPath(
                                     color = buttonColor, path = path, style = Stroke(
                                         4f,
@@ -155,24 +162,18 @@ val extendedPoints=listOf(points.first())+points+listOf(points.last())
 
                         }
 
-                        }
-                    if(currentStrokes.isNotEmpty())
-                    {
-                        val path=createPath(currentStrokes)
+                    }
+                    if (currentStrokes.isNotEmpty()) {
+                        val path = createPath(currentStrokes)
 
-                        when(currentStrokes.size){
-                            1->{
-                                drawCircle(color = buttonColor, center=currentStrokes.first(),
-                                    radius = 2f)
-                            }
-                            else->{
-                                drawPath(
-                                    path=path, color = buttonColor, style = Stroke(4f,
-                                        join = StrokeJoin.Round,
-                                        cap = StrokeCap.Round)
-                                )
-                            }
-                        }
+
+                        drawPath(
+                            path = path, color = buttonColor, style = Stroke(
+                                4f,
+                                join = StrokeJoin.Round,
+                                cap = StrokeCap.Round
+                            )
+                        )
 
 
                     }
