@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.positionChanged
+import kotlin.math.pow
 
 @Composable
 fun DoodlePadScreen() {
@@ -49,20 +50,71 @@ fun DoodlePadScreen() {
         mutableStateListOf<Offset>()
     }
 
+    fun distanceBetween(first: Offset, second: Offset): Float {
+        return (first - second).getDistance()
+    }
+
+    fun resamplePoints(points:List<Offset>, spacing: Float=4f):List<Offset>{
+        if(points.size<2)
+        {
+            return points
+        }
+
+//        to store result
+        val result=mutableListOf(points.first())
+
+        var previousPoint=points.first()
+        var distanceFromLastSample=0f
+
+        for(i in 1 until points.size)
+        {
+            val currentPoint=points[i]
+            val segment=currentPoint-previousPoint
+            val segmentLength=segment.getDistance()
+
+            if(segmentLength==0f)
+            {
+                continue
+            }
+            var remainingDistance=segmentLength
+            while(distanceFromLastSample+remainingDistance>=spacing){
+                val distanceToSample = spacing - distanceFromLastSample
+                val ratio = distanceToSample / remainingDistance
+
+                val samplePoint = previousPoint + segment * ratio
+
+                result.add(samplePoint)
+
+                previousPoint = samplePoint
+                remainingDistance -= distanceToSample
+                distanceFromLastSample = 0f
+            }
+            distanceFromLastSample += remainingDistance
+            previousPoint = currentPoint
+        }
+        if (result.last() != points.last()) {
+            result.add(points.last())
+        }
+
+        return result
+
+    }
+
     fun createPath(points: List<Offset>): Path {
         val path = Path()
         if (points.isEmpty()) {
             return path
         }
+val resampledPoints=resamplePoints(points)
 
-        if (points.size == 2) {
-            path.moveTo(points[0].x, points[0].y)
-            path.lineTo(points[1].x, points[1].y)
+        if (resampledPoints.size == 2) {
+            path.moveTo(resampledPoints[0].x, resampledPoints[0].y)
+            path.lineTo(resampledPoints[1].x, resampledPoints[1].y)
             return path
         }
 
 //        points.drop(1).forEach { point ->
-        val extendedPoints = listOf(points.first()) + points + listOf(points.last())
+        val extendedPoints = listOf(resampledPoints.first()) + resampledPoints+ listOf(resampledPoints.last())
         path.moveTo(extendedPoints[1].x, extendedPoints[1].y)
 
 //            path.lineTo(point.x, point.y)
@@ -73,10 +125,19 @@ fun DoodlePadScreen() {
             val p1 = extendedPoints[i]
             val p2 = extendedPoints[i + 1]
             val p3 = extendedPoints[i + 2]
+
+            val t0 = 0f
+            val t1 = t0 + distanceBetween(p0, p1).pow(0.5f)
+            val t2 = t1 + distanceBetween(p1, p2).pow(0.5f)
+            val t3 = t2 + distanceBetween(p2, p3).pow(0.5f)
+
 //                start is wherever I currently am
-            val control1 = p1 + (p2 - p0) / 6f
+            val control1 = p1 + ((p2 - p0) / (t2 - t0)) * ((t2 - t1) / 3f)
 //                previous=control point
-            val control2 = p2 - (p3 - p1) / 6f
+//            val control2 = p2 - (p3 - p1) / 6f
+            val control2 = p2 - (
+                    (p3 - p1) / (t3 - t1)
+                    ) * ((t2 - t1) / 3f)
 
 //                end=middle point
             val end = p2
@@ -114,6 +175,7 @@ fun DoodlePadScreen() {
                                 val change = event.changes.first()
 
                                 if (change.positionChanged()) {
+                                    currentStrokes.addAll(change.historical.map { it.position })
                                     currentStrokes.add(change.position)
                                 }
 
@@ -159,7 +221,7 @@ fun DoodlePadScreen() {
                             1 -> {
                                 drawCircle(
                                     color = buttonColor,
-                                    radius = 2f,
+                                    radius = 4f,
                                     center = stroke.first()
                                 )
                             }
