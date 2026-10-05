@@ -25,3 +25,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+
+@Preview
+@Composable
+fun PreviewDoodlePad()
+{
+    DoodlePadScreen()
+}
