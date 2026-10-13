@@ -4,14 +4,17 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -41,6 +44,26 @@ fun DoodlePadScreen() {
     val buttonColor = Color(0xFFE7decd)
 
     var strokes by remember { mutableStateOf<List<List<Offset>>>(emptyList()) }
+    var redoStrokes by remember { mutableStateOf<List<List<Offset>>>(emptyList()) }
+
+    fun undo(){
+        if(strokes.isNotEmpty()){
+            val lastStroke=strokes.last()
+
+            redoStrokes=redoStrokes+listOf(lastStroke)
+            strokes=strokes.dropLast(1)
+        }
+    }
+
+    fun redo(){
+        if(redoStrokes.isNotEmpty())
+        {
+            val lastUndoStroke=redoStrokes.last()
+
+            strokes=strokes+listOf(lastUndoStroke)
+            redoStrokes=redoStrokes.dropLast(1)
+        }
+    }
 
 //    currentStrokes-state belonging to screen
 //    remember-keep value across recompositions
@@ -83,7 +106,12 @@ fun DoodlePadScreen() {
 
                                 }
                             }
-                            strokes = strokes + listOf(currentStrokes.toList())
+                            val completedStroke=currentStrokes.toList()
+                            if(completedStroke.isNotEmpty()){
+                                strokes = strokes + listOf(completedStroke)
+                                redoStrokes=emptyList()
+                            }
+
                             currentStrokes.clear()
 
                         }
@@ -173,13 +201,30 @@ fun DoodlePadScreen() {
             }
 
 
-            Box(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
+                horizontalArrangement = Arrangement.spacedBy(24.dp,
+                    Alignment.CenterHorizontally),
+ verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(
+                    onClick = {
+                        undo()
+                    },
+                    enabled = strokes.isNotEmpty()
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Undo,
+                        contentDescription = stringResource(R.string.undo),
+                        tint=buttonColor,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+
                 IconButton(onClick = {
                     strokes = emptyList()
                     currentStrokes.clear()
+                    redoStrokes=emptyList()
                 }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
@@ -188,6 +233,20 @@ fun DoodlePadScreen() {
                         modifier = Modifier.size(30.dp)
                     )
                 }
+                IconButton(
+                    onClick = {
+                        redo()
+                    },
+                    enabled = redoStrokes.isNotEmpty()
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Redo,
+                        contentDescription = stringResource(R.string.redo),
+                        tint=buttonColor,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+
             }
         }
     }
