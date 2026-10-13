@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">DoodlePad</string>
     <string name="delete">Delete</string>
+    <string name="redo">Redo</string>
+    <string name="undo">Undo</string>
+
 </resources>
