@@ -211,7 +211,8 @@ fun DoodlePadScreen() {
                 IconButton(
                     onClick = {
                         undo()
-                    }
+                    },
+                    enabled = strokes.isNotEmpty()
                 ) {
                     Icon(
                         imageVector = Icons.Default.Undo,
@@ -224,7 +225,7 @@ fun DoodlePadScreen() {
                 IconButton(onClick = {
                     strokes = emptyList()
                     currentStrokes.clear()
-                    currentStrokes.clear()
+                    redoStrokes=emptyList()
                 }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
